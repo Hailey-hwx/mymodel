@@ -58,54 +58,54 @@ class ModelFormatter(BasicFormatter):
                         f_summary3.append(s)
 
                 # 删除空数据
-                if len(part1) and len(part2) and len(part3) and len(summary1) and len(summary2) and len(summary3):
-                    part2_all.append(part2)
-                    summary2_all.append(summary2)
-                    summary_all.append(temp_data["summary"])
+                # if len(part1) and len(part2) and len(part3) and len(summary1) and len(summary2) and len(summary3):
+                part2_all.append(part2)
+                summary2_all.append(summary2)
+                summary_all.append(temp_data["summary"])
 
-                    part1_token = self.tokenizer(part1, max_length=self.max_lawformer_len, truncation=True)
-                    part1_all.append(part1_token['input_ids'])
+                part1_token = self.tokenizer(part1, max_length=self.max_lawformer_len, truncation=True)
+                part1_all.append(part1_token['input_ids'])
 
-                    part3_token = self.tokenizer(part3, max_length=self.max_lawformer_len, truncation=True)
-                    part3_all.append(part3_token['input_ids'])
+                part3_token = self.tokenizer(part3, max_length=self.max_lawformer_len, truncation=True)
+                part3_all.append(part3_token['input_ids'])
 
-                    summary3_token = self.tokenizer(f_summary3, max_length=self.max_lawformer_len, truncation=True)
-                    summary3_all.append(summary3_token['input_ids'])
+                summary3_token = self.tokenizer(f_summary3, max_length=self.max_lawformer_len, truncation=True)
+                summary3_all.append(summary3_token['input_ids'])
 
-                    lawformer_formatter = LawformerFormatter(config)
-                    input_ids3, token_type_ids3, attention_mask3, cls_ids3, cls_len3 = lawformer_formatter.cls_process(part3_token)
+                lawformer_formatter = LawformerFormatter(config)
+                input_ids3, token_type_ids3, attention_mask3, cls_ids3, cls_len3 = lawformer_formatter.cls_process(part3_token)
 
-                    input3_input_ids.append(input_ids3)
-                    input3_token_type_ids.append(token_type_ids3)
-                    input3_attention_mask.append(attention_mask3)
-                    input3_cls_ids.append(cls_ids3)
-                    input3_cls_len.append(cls_len3)
+                input3_input_ids.append(input_ids3)
+                input3_token_type_ids.append(token_type_ids3)
+                input3_attention_mask.append(attention_mask3)
+                input3_cls_ids.append(cls_ids3)
+                input3_cls_len.append(cls_len3)    
 
-                else:
-                    break
+                # else:
+                #     break
 
             else:
-                if len(part1) and len(part2) and len(part3):
-                    part2_all.append(part2)
+                # if len(part1) and len(part2) and len(part3):
+                part2_all.append(part2)
 
-                    summary_all.append(temp_data["summary"])
+                summary_all.append(temp_data["summary"])
 
-                    part1_token = self.tokenizer(part1, max_length=self.max_lawformer_len, truncation=True)
-                    part1_all.append(part1_token['input_ids'])
+                part1_token = self.tokenizer(part1, max_length=self.max_lawformer_len, truncation=True)
+                part1_all.append(part1_token['input_ids'])
 
-                    part3_token = self.tokenizer(part3, max_length=self.max_lawformer_len, truncation=True)
-                    part3_all.append(part3_token['input_ids'])
+                part3_token = self.tokenizer(part3, max_length=self.max_lawformer_len, truncation=True)
+                part3_all.append(part3_token['input_ids'])
 
-                    lawformer_formatter = LawformerFormatter(config)
-                    input_ids3, token_type_ids3, attention_mask3, cls_ids3, cls_len3 = lawformer_formatter.cls_process(part3_token)
+                lawformer_formatter = LawformerFormatter(config)
+                input_ids3, token_type_ids3, attention_mask3, cls_ids3, cls_len3 = lawformer_formatter.cls_process(part3_token)
 
-                    input3_input_ids.append(input_ids3)
-                    input3_token_type_ids.append(token_type_ids3)
-                    input3_attention_mask.append(attention_mask3)
-                    input3_cls_ids.append(cls_ids3)
-                    input3_cls_len.append(cls_len3)
-                else:
-                    break
+                input3_input_ids.append(input_ids3)
+                input3_token_type_ids.append(token_type_ids3)
+                input3_attention_mask.append(attention_mask3)
+                input3_cls_ids.append(cls_ids3)
+                input3_cls_len.append(cls_len3)
+                # else:
+                #     break
 
         input3_input_ids = torch.LongTensor(input3_input_ids)
         input3_token_type_ids = torch.LongTensor(input3_token_type_ids)

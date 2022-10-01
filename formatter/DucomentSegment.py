@@ -15,33 +15,6 @@ class DocumentSegment:
         # self.ps3 = re.compile(patterns3)
         self.pe2 = re.compile(patterne2)
 
-    # # 将长句划分为短句（词语）
-    # def sentence_split(self, sentence):
-    #     # 去除空格
-    #     sentence = sentence.replace(' ', '')
-
-    #     start = 0
-    #     result = []
-    #     groups = re.finditer(';|；|。|，|,', sentence)
-
-    #     for i in groups:
-    #         end = i.span()[1]
-    #         result.append(sentence[start:end])
-    #         start = end
-    #     # last one
-    #     result.append(sentence[start:])
-
-    #     return result
-
-    # 加载词典
-    # def load_user_dict(filename):
-    #     user_dict = []
-    #     with open(filename, encoding='utf-8') as f:
-    #         for l in f:
-    #             w = l.split()[0]
-    #             user_dict.append(w)
-    #     return user_dict
-
     # 利用jieba分词将长句划分为词供后续抽取
     def sentence_split(self, sentence):
         # jieba.load_userdict('./data/user_dict.txt')
@@ -103,5 +76,24 @@ class DocumentSegment:
         for s in result:
             if s != '':
                 part1.append(s)
+
+        if len(part1) == 0:
+            part1_tmp = document[0]
+            result = self.sentence_split(part1_tmp)
+            for s in result:
+                if s != '':
+                    part1.append(s)
+
+        if len(part2) == 0:
+            for sentence in document[10:-10]:
+                part2.append(sentence)
+
+        if len(part3) == 0:
+            for sentence in document[-10::]:
+                result = self.sentence_split(sentence)
+                num3 = num3+1
+                for i, s in enumerate(result):
+                    if s != '':
+                        part3.append(s)
 
         return part1, part2, part3

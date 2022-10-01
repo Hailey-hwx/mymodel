@@ -4,10 +4,6 @@ import torch
 class SummaryFormatter:
     def __init__(self):
         super().__init__()
-        # self.max_len = config.getint("data", "max_fc_len")
-        # self.max_part1_len = config.getint("data", "max_part1_len")
-        # self.max_fc_len = 10
-        # self.max_part1_len = 30
 
     # 重新组成句子token
     def summary_process(self, inputs):

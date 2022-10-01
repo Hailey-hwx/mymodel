@@ -100,7 +100,7 @@ class MyModel(nn.Module):
         # print(part3_lstm_output.shape)
         part3_attention_output = self.attention(part3_lstm_output, part3_cls_len)
         part3_score = self.classifier(part3_attention_output)
-        print(part3_score.dtype)
+        # print(part3_score.dtype)
         # 删除nan
         part3_score_list = []
         for batch in part3_score:
@@ -117,6 +117,8 @@ class MyModel(nn.Module):
             part3_score_list_batch = part3_score_list_batch.unsqueeze(0)
             part3_score_list.append(part3_score_list_batch)
         part3_score = part3_score_list[0]
+        # print(part3_score.dtype)
+        # print(part3_score)
         for i, sen in enumerate(part3_score_list):
             if i == 0:
                 continue

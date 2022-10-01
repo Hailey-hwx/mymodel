@@ -70,7 +70,8 @@ class SummarySegment:
                 flag1 = False
                 flag2 = False
                 flag3 = True
-                part3.append(sentence)
+                if sentence != '':
+                    part3.append(sentence)
 
         if len(part1) == 0:
             part1.append(part2[0])
@@ -78,5 +79,8 @@ class SummarySegment:
         if len(part2) == 0:
             part2 = part1
             part1 = part1[0]
+
+        if len(part3) == 0:
+            part3 = part2[-5::]
 
         return part1, part2, part3

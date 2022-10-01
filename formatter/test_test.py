@@ -43,54 +43,61 @@
 # print(rouge)
 
 
-import json
+# import json
 
-def get_data(num, data):
-    num1 = int(num * 0.8) + 1
-    num2 = int(num * 0.1)
-    num3 = num2
+# def get_data(num, data):
+#     num1 = int(num * 0.8) + 1
+#     num2 = int(num * 0.1)
+#     num3 = num2
 
-    train_data = data[:num1]
-    valid_data = data[num1:num1+num2]
-    test_data = data[num1+num2:]
+#     train_data = data[:num1]
+#     valid_data = data[num1:num1+num2]
+#     test_data = data[num1+num2:]
 
-    with open('./data/train.json', 'a+', encoding='utf-8') as f1:
-        for line in train_data:
-            json.dump(obj=line, fp=f1, ensure_ascii=False)
-            f1.write('\n')
+#     with open('./data/train.json', 'a+', encoding='utf-8') as f1:
+#         for line in train_data:
+#             json.dump(obj=line, fp=f1, ensure_ascii=False)
+#             f1.write('\n')
 
-    with open('./data/valid.json', 'a+', encoding='utf-8') as f2:
-        for line in valid_data:
-            json.dump(obj=line, fp=f2, ensure_ascii=False)
-            f2.write('\n')
+#     with open('./data/valid.json', 'a+', encoding='utf-8') as f2:
+#         for line in valid_data:
+#             json.dump(obj=line, fp=f2, ensure_ascii=False)
+#             f2.write('\n')
 
-    with open('./data/test.json', 'a+', encoding='utf-8') as f3:
-        for line in test_data:
-            json.dump(obj=line, fp=f3, ensure_ascii=False)
-            f3.write('\n')
+#     with open('./data/test.json', 'a+', encoding='utf-8') as f3:
+#         for line in test_data:
+#             json.dump(obj=line, fp=f3, ensure_ascii=False)
+#             f3.write('\n')
     
 
-data = []
-num = 0
-with open('./data/data.json', encoding="utf-8") as f:
-    for line in f:
-        num = num + 1
-        data.append(json.loads(line))
-print(num)
-# get_data(num, data)
+# data = []
+# num = 0
+# with open('./data/data.json', encoding="utf-8") as f:
+#     for line in f:
+#         num = num + 1
+#         data.append(json.loads(line))
+# print(num)
+# # get_data(num, data)
 
-num1 = 0
-num2 = 0
-num3 = 0
-with open('./data/train.json', encoding="utf-8") as f:
-    for line in f:
-        num1 = num1 + 1
-with open('./data/valid.json', encoding="utf-8") as f:
-    for line in f:
-        num2 = num2 + 1
-with open('./data/test.json', encoding="utf-8") as f:
-    for line in f:
-        num3 = num3 + 1
-print(num1)
-print(num2)
-print(num3)
+# num1 = 0
+# num2 = 0
+# num3 = 0
+# with open('./data/train.json', encoding="utf-8") as f:
+#     for line in f:
+#         num1 = num1 + 1
+# with open('./data/valid.json', encoding="utf-8") as f:
+#     for line in f:
+#         num2 = num2 + 1
+# with open('./data/test.json', encoding="utf-8") as f:
+#     for line in f:
+#         num3 = num3 + 1
+# print(num1)
+# print(num2)
+# print(num3)
+
+
+a = [1,2,3,4,5,6]
+
+print(a[1:-2])
+
+# python3 train.py --config config/LCASE.config --gpu 0,1

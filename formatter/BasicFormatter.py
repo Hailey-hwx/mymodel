@@ -12,7 +12,7 @@ from formatter.LawformerFormatter import LawformerFormatter
 from .Basic import BasicFormatter
 
 
-class ModelFormatter(BasicFormatter):
+class BasicFormatter(BasicFormatter):
     def __init__(self, config, mode, *args, **params):
         super().__init__(config, mode, *args, **params)
 

@@ -12,7 +12,7 @@ from model.layer.MultiHeadAttention import MultiHeadAttention
 from model.layer.Classifier import Classifier
 from tools.accuracy_init import init_accuracy_function
 from transformers import BertTokenizer, AutoModel
-from model.decoder.TransDecoder import TextEmbedding, PositionalEnconding, Generator
+from model.decoder.TransDecoder import TransMask, TextEmbedding, PositionalEnconding, Generator
 
 
 class MyModel(nn.Module):
@@ -29,6 +29,7 @@ class MyModel(nn.Module):
         # encoder
         # self.lawformer = AutoModel.from_pretrained('thunlp/Lawformer')
         # decoder
+        self.mask = TransMask(config, gpu_list, *args, **params)
         self.te = TextEmbedding(config, gpu_list, *args, **params)
         self.pe = PositionalEnconding(config, gpu_list, *args, **params)
         self.ge = Generator(config, gpu_list, *args, **params)
@@ -48,11 +49,12 @@ class MyModel(nn.Module):
         # encoder_output = outputs[0]
         encoder_output = self.lawformer_cls(source_input_ids, 0, source_attention_mask, 0, 0, 2)
         # transformer-decoder
+        tgt_key_padding_mask, tgt_mask = self.mask(target_inputs)
         target_out = self.te(target_inputs)
         target_out = self.pe(target_out)
         target_out = target_out.transpose(0,1)
         encoder_output = encoder_output.transpose(0,1)
-        out = self.transformer_decoder(target_out, encoder_output)
+        out = self.transformer_decoder(tgt=target_out, memory=encoder_output, tgt_mask=tgt_mask, tgt_key_padding_mask=tgt_key_padding_mask)
         out = out.transpose(0,1)
         part2_score = self.ge(out)#predict p[(p0,p1,...,p21127)*T]
         part2_score = part2_score.transpose(1,2)
@@ -77,7 +79,7 @@ class MyModel(nn.Module):
             target_out = target_out.transpose(0,1)
 
             encoder_output = encoder_output.transpose(0,1)
-            out = self.transformer_decoder(target_out, encoder_output)
+            out = self.transformer_decoder(tgt=target_out, memory=encoder_output)
             out = out.transpose(0,1)
             part2_score = self.ge(out)#predict p[(p0,p1,...,p21127)*T]
             part2_score = part2_score.transpose(1,2)
@@ -169,7 +171,7 @@ class LCASE(nn.Module):
         self.LCASE = MyModel(config, gpu_list, *args, **params)
         self.tokenizer = BertTokenizer.from_pretrained("hfl/chinese-roberta-wwm-ext")
         self.criterion = nn.CrossEntropyLoss()
-        self.accuracy_function = init_accuracy_function(config, *args, **params)
+        # self.accuracy_function = init_accuracy_function(config, *args, **params)
 
     def init_multi_gpu(self, device, config, *args, **params):
         if config.getboolean("distributed", "use"):
@@ -231,7 +233,7 @@ class LCASE(nn.Module):
             part1_summary.append(summary)# predict summary
         return part1_summary
 
-    def forward(self, data, config, gpu_list, acc_result, mode):
+    def forward(self, data, config, gpu_list, mode):
         x = data
 
         y = self.LCASE(x, mode)
@@ -295,21 +297,17 @@ class LCASE(nn.Module):
             loss = (ex_loss + ab_loss) / 2
             print(loss)
 
-            # loss = loss.mean()
-            # print(part1_summary)
-            # print(part2_summary)
-            # print(part3_summary)
             for i in range(len(part1_summary)):
                 s = part1_summary[i] + part2_summary[i] + part3_summary[i]
                 pre_summary.append(s)
 
-            acc_result = self.accuracy_function(pre_summary, summary_str, config)#
-            return {"loss": loss, "acc_result": acc_result}
+            # acc_result = self.accuracy_function(pre_summary, summary_str, config)#
+            return {"loss": loss, "summary": summary_str, "pre_summary": pre_summary}
 
 
         for i in range(len(part1_summary)):
                 s = part1_summary[i] + part2_summary[i] + part3_summary[i]
                 pre_summary.append(s)
 
-        acc_result = self.accuracy_function(pre_summary, summary_str, config)#
-        return {"acc_result": acc_result}
+        # acc_result = self.accuracy_function(pre_summary, summary_str, config)#
+        return {"summary": summary_str, "pre_summary": pre_summary}

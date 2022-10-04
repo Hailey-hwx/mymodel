@@ -96,8 +96,15 @@
 # print(num3)
 
 
-a = [1,2,3,4,5,6]
+# a = [1,2,3,4,5,6]
 
-print(a[1:-2])
+# print(a[1:-2])
 
 # python3 train.py --config config/LCASE.config --gpu 0,1
+
+def a(x):
+    if x == 1:
+        return 1
+    return 0
+
+print(a(0))

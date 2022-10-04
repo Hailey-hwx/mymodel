@@ -101,16 +101,18 @@ def train(parameters, config, gpu_list, do_test=False):
 
             optimizer.zero_grad()
 
-            results = model(data, config, gpu_list, acc_result, "train")
+            results = model(data, config, gpu_list, "train")
 
-            loss, acc_result = results["loss"], results["acc_result"]
+            # loss, acc_result = results["loss"], results["acc_result"]
+            loss, summary, pre_summary = results["loss"], results["summary"], results["pre_summary"]
             total_loss += float(loss)
 
             loss.backward()
             optimizer.step()
 
             if step % output_time == 0:
-                output_info = output_function(acc_result, config)
+                # output_info = output_function(acc_result, config)
+                output_info = output_function(summary, pre_summary, config)
 
                 delta_t = timer() - start_time
 
@@ -121,7 +123,9 @@ def train(parameters, config, gpu_list, do_test=False):
             global_step += 1
             writer.add_scalar(config.get("output", "model_name") + "_train_iter", float(loss), global_step)
             
-        output_info = output_function(acc_result, config)
+        # output_info = output_function(acc_result, config)
+        output_info = output_function(summary, pre_summary, config)
+        
         delta_t = timer() - start_time
         output_value(current_epoch, "train", "%d/%d" % (step + 1, total_len), "%s/%s" % (
             gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),

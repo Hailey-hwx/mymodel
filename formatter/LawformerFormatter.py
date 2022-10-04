@@ -4,10 +4,10 @@ import torch
 class LawformerFormatter:
     def __init__(self, config):
         super().__init__()
-        self.max_len = config.getint("data", "max_len")
-        self.max_cls_len = config.getint("data", "max_cls_len")
-        # self.max_len = config
-        # self.max_cls_len = 200
+        # self.max_len = config.getint("data", "max_len")
+        # self.max_cls_len = config.getint("data", "max_cls_len")
+        self.max_len = config
+        self.max_cls_len = 200
 
     # 重新组成句子token
     def cls_process(self, inputs):
@@ -20,6 +20,9 @@ class LawformerFormatter:
         # token处理
         for input_id in inputs['input_ids']:
             input_ids = input_ids + input_id
+
+        # print(len(input_ids))
+
         if len(input_ids) >= self.max_len:
             input_ids = input_ids[:self.max_len]
         else:

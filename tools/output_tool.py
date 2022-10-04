@@ -18,12 +18,16 @@ def null_output_function(data, config, *args, **params):
 
 #     return json.dumps(result, sort_keys=True)
 
-def rouge_output_function(data, config, *args, **params):
+def rouge_output_function(summary, pre_summary, config, *args, **params):
     which = config.get("output", "output_value").replace(" ", "").split(",")
     # temp = get_rouge(data, config)
-    temp = data
+    # temp = data
     result = {}
     for name in which:
-        result[name] = temp[name]
+        # result[name] = temp[name]
+        if name == 'summary':
+            result[name] = summary
+        else:
+            result[name] = pre_summary
 
     return json.dumps(result, sort_keys=True)

@@ -9,11 +9,11 @@ class TransMask(nn.Module):
         self.transformer = nn.Transformer()
 
     def forward(self,x):
-        key_padding_mask = torch.zeros(x.size())
-        key_padding_mask[x == 0] = -float('inf')
+        tgt_key_padding_mask = torch.zeros(x.size())
+        tgt_key_padding_mask[x == 0] = -float('inf')
         tgt_mask = self.transformer.generate_square_subsequent_mask(sz=x.size(-1))
 
-        return key_padding_mask, tgt_mask
+        return tgt_key_padding_mask, tgt_mask
 
 # 1.文本编码层
 class TextEmbedding(nn.Module):
@@ -47,7 +47,7 @@ class PositionalEnconding(nn.Module):
         super(PositionalEnconding,self).__init__()
         self.d_model = config.getint("model", "hidden_size")
         self.dropout = config.getfloat("model", "dropout")
-        self.max_len = config.getint("data", "max_len")
+        self.max_len = config.getint("data", "max_lawformer_len")
         # 实例化dropout层
         self.dpot = nn.Dropout(p=self.dropout)
 

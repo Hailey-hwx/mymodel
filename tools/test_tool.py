@@ -37,7 +37,7 @@ def test(parameters, config, gpu_list):
                 else:
                     data[key] = Variable(data[key])
 
-        results = model(data, config, gpu_list, acc_result, "test")
+        results = model(data, config, gpu_list, "test")
         result = result + results["output"]
         cnt += 1
 

@@ -202,62 +202,136 @@ vocab = 21128
 d_model = 768
 dropout = 0.1
 
-tgt_key_padding_mask = torch.zeros(summary_input_ids.size())
-tgt_key_padding_mask[summary_input_ids == 0] = -float('inf')
-src_key_padding_mask = torch.zeros(document_input_ids.size())
-src_key_padding_mask[document_input_ids == 0] = -float('inf')
-transformer = nn.Transformer()
-tgt_mask = transformer.generate_square_subsequent_mask(sz=summary_input_ids.size(-1))
+# seq2seq
+print(document_input_ids.shape)
+print(document_input_ids)
+print(summary_input_ids.shape)
 
-lut = nn.Embedding(vocab,d_model,padding_idx=0)
-target_out = lut(summary_input_ids) * math.sqrt(d_model)
+# encoder
+doc_len = []
+for batch in document_input_ids:
+    len = 0
+    for i in batch:
+        if i != 0:
+            len=len+1
+    doc_len.append(len)
+doc_len = torch.LongTensor(doc_len)
+print(doc_len)
 
-source_input = lut(document_input_ids) * math.sqrt(d_model)
+embedding = nn.Embedding(vocab, d_model)
+# self.rnn = nn.GRU(emb_dim, enc_hid_dim, bidirectional=True)
+lstm = nn.LSTM(768, 768, bidirectional=True)
+fc = nn.Linear(768 * 2, 768)
+dropout = nn.Dropout(dropout)
 
-dpot = nn.Dropout(p=dropout)
-pe = torch.zeros(3000, d_model)
-position = torch.arange(0, 3000).unsqueeze(1)
-div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000)/d_model))
-pe[:,0::2] = torch.sin(position * div_term)
-pe[:,1::2] = torch.cos(position * div_term)
-pe = pe.unsqueeze((0))
-target_out = target_out + pe[:, : target_out.size(1)].requires_grad_(False)
-target_out = dpot(target_out)
+embedded = dropout(embedding(document_input_ids))
+packed_embedded = rnn_utils.pack_padded_sequence(embedded, doc_len, batch_first=True, enforce_sorted=False)
+lstm.flatten_parameters()
+packed_outputs, hidden = lstm(packed_embedded) 
+outputs, length = rnn_utils.pad_packed_sequence(packed_outputs, batch_first=True)#, , total_length=3000
+hidden = torch.tanh(fc(torch.cat((hidden[0][:, -2, :], hidden[0][:, -1, :]), dim=1)))
+# print(outputs.shape)  #[batchsize, doclen(), 768*2]
+# print(hidden.shape)    #[batchsize,768]
 
-source_input = source_input + pe[:, : source_input.size(1)].requires_grad_(False)
-source_input = dpot(source_input)
+# attention
+attn = nn.Linear((768 * 2) + 768, 768)
+v = nn.Linear(768, 1, bias=False)
+encoder_outputs = outputs
+batch_size = encoder_outputs.shape[0]
+doc_len = encoder_outputs.shape[1]
+ 
+hidden = hidden.unsqueeze(1).repeat(1, doc_len, 1)
+# print(hidden.shape)
+# print(outputs.shape)
+# hidden = [batch size, doc len, dec hid dim]
+# outputs = [batch size, doc len, enc hid dim * 2]
+ 
+energy = torch.tanh(attn(torch.cat((hidden, encoder_outputs), dim=2)))
+# energy = [batch size, doc len, dec hid dim]
+ 
+attention = v(energy).squeeze(2)
+# attention = [batch size, doc len]
+mask = (document_input_ids != 0)
+attention = attention.masked_fill(mask == 0, -1e10)
+a = attention.softmax(dim=1)
+print(a.shape)
 
-transformer = nn.Transformer(d_model=768)
+# decoder
+sum_len = summary_input_ids.shape[1]
+decoder_outputs = torch.zeros(batch_size, sum_len, vocab)###
+input = summary_input_ids[:,0]
+# print(input)
+for t in range(1,sum_len):
+    # output, hidden, _ = self.decoder(input, hidden, encoder_outputs, mask)
 
-target_out = target_out.transpose(0,1)
-source_input = source_input.transpose(0,1)
-
-out = transformer(src=source_input, tgt=target_out, tgt_mask=tgt_mask, src_key_padding_mask = src_key_padding_mask, tgt_key_padding_mask=tgt_key_padding_mask)
-out = out.transpose(0,1)
-print(out.shape)
 
 
-# G = Generator(d_model, vocab)
-project = nn.Linear(d_model, vocab)
-out = project(out).softmax(dim=-1)
-out = out.transpose(1,2)
-summary_out = out.argmax(dim=1)
 
-# target_inputs = target_inputs.transpose(1,2)
-print(out.shape)
-# print(target_inputs.shape)
-criterion = torch.nn.CrossEntropyLoss()
-l1 = criterion(out, summary_input_ids)
-print(l1)
 
-pre_summary_temp = tokenizer.batch_decode(summary_out, skip_special_tokens=True)#predict summary
-pre_summary = ["".join(str.replace(" ", "")) for str in pre_summary_temp]
-print(pre_summary)
 
-# # out = out.transpose(1,2)
-# out = out.argmax(dim=1)
-# # print(out.shape)
+
+
+
+
+
+
+
+# tgt_key_padding_mask = torch.zeros(summary_input_ids.size())
+# tgt_key_padding_mask[summary_input_ids == 0] = -float('inf')
+# src_key_padding_mask = torch.zeros(document_input_ids.size())
+# src_key_padding_mask[document_input_ids == 0] = -float('inf')
+# transformer = nn.Transformer()
+# tgt_mask = transformer.generate_square_subsequent_mask(sz=summary_input_ids.size(-1))
+
+# lut = nn.Embedding(vocab,d_model,padding_idx=0)
+# target_out = lut(summary_input_ids) * math.sqrt(d_model)
+
+# source_input = lut(document_input_ids) * math.sqrt(d_model)
+
+# dpot = nn.Dropout(p=dropout)
+# pe = torch.zeros(3000, d_model)
+# position = torch.arange(0, 3000).unsqueeze(1)
+# div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000)/d_model))
+# pe[:,0::2] = torch.sin(position * div_term)
+# pe[:,1::2] = torch.cos(position * div_term)
+# pe = pe.unsqueeze((0))
+# target_out = target_out + pe[:, : target_out.size(1)].requires_grad_(False)
+# target_out = dpot(target_out)
+
+# source_input = source_input + pe[:, : source_input.size(1)].requires_grad_(False)
+# source_input = dpot(source_input)
+
+# transformer = nn.Transformer(d_model=768)
+
+# target_out = target_out.transpose(0,1)
+# source_input = source_input.transpose(0,1)
+
+# out = transformer(src=source_input, tgt=target_out, tgt_mask=tgt_mask, src_key_padding_mask = src_key_padding_mask, tgt_key_padding_mask=tgt_key_padding_mask)
+# out = out.transpose(0,1)
 # print(out.shape)
+
+
+# # G = Generator(d_model, vocab)
+# project = nn.Linear(d_model, vocab)
+# out = project(out).softmax(dim=-1)
+# out = out.transpose(1,2)
+# summary_out = out.argmax(dim=1)
+
+# # target_inputs = target_inputs.transpose(1,2)
+# print(out.shape)
+# # print(target_inputs.shape)
+# criterion = torch.nn.CrossEntropyLoss()
+# l1 = criterion(out, summary_input_ids)
+# print(l1)
+
+# pre_summary_temp = tokenizer.batch_decode(summary_out, skip_special_tokens=True)#predict summary
+# pre_summary = ["".join(str.replace(" ", "")) for str in pre_summary_temp]
+# print(pre_summary)
+
+# # # out = out.transpose(1,2)
+# # out = out.argmax(dim=1)
+# # # print(out.shape)
+# # print(out.shape)
 
 
 

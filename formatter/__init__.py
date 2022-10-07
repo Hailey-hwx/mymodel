@@ -3,12 +3,16 @@ import logging
 
 from formatter.Basic import BasicFormatter
 from formatter.ModelFormatter import ModelFormatter
+from formatter.BaseFormatter import BaseFormatter
+from formatter.AbFormatter import AbFormatter
 
 logger = logging.getLogger(__name__)
 
 formatter_list = {
-    "Basic": BasicFormatter,
+    "Basic": Basic,
     "ModelFormatter": ModelFormatter,
+    "AbFormatter" : AbFormatter,
+    "BaseFormatter": BaseFormatter
 }
 
 

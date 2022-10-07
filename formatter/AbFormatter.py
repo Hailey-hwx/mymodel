@@ -17,7 +17,7 @@ class AbFormatter(BasicFormatter):
         super().__init__(config, mode, *args, **params)
 
         self.tokenizer = BertTokenizer.from_pretrained("hfl/chinese-roberta-wwm-ext")
-        self.max_bert_len = config.getint("data", "max_bert_len")
+        # self.max_bert_len = config.getint("data", "max_bert_len")
         self.mode = mode
 
     def process(self, data, config, mode, *args, **params):
@@ -36,10 +36,10 @@ class AbFormatter(BasicFormatter):
             document_all.append(document)
             summary_all.append(summary)
         
-        document_token = tokenizer(document_all, max_length=3000, truncation=True, padding=True, return_tensors='pt')
+        document_token = self.tokenizer(document_all, max_length=3000, truncation=True, padding=True, return_tensors='pt')
         document_input_ids = document_token['input_ids']
 
-        summary_token = tokenizer(summary_all, max_length=3000, truncation=True, padding=True, return_tensors='pt')
+        summary_token = self.tokenizer(summary_all, max_length=3000, truncation=True, padding=True, return_tensors='pt')
         summary_input_ids = summary_token['input_ids']
         
         return {

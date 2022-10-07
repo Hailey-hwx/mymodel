@@ -85,7 +85,7 @@ class Bert(nn.Module):
         ex_label = (torch.tensor(np.array(ex_label), dtype=torch.int64)).cuda()
         return ex_label
 
-    def forward(self, data, config, gpu_list, acc_result, mode):
+    def forward(self, data, config, gpu_list, mode):
         x = data
         input_ids = x['input_input_ids']
         token_type_ids = x['input_token_type_ids']
@@ -100,7 +100,7 @@ class Bert(nn.Module):
         document_all = x['document_all']
         document_str = []
         for batch in document_all: 
-            document_s = tokenizer.batch_decode(batch, skip_special_tokens=True)
+            document_s = self.tokenizer.batch_decode(batch, skip_special_tokens=True)
             document_s = ["".join(str.replace(" ", "")) for str in document_s]
             document_str.append(document_s)
         # print(document_str)
@@ -116,7 +116,7 @@ class Bert(nn.Module):
         _summary = x['_summary']
         summary_str = []
         for batch in _summary:
-            summary_s = tokenizer.batch_decode(batch, skip_special_tokens=True)
+            summary_s = self.tokenizer.batch_decode(batch, skip_special_tokens=True)
             summary_s = ''.join(summary_s)
             summary_str.append(summary_s)
         print(summary_str)

@@ -1,12 +1,17 @@
+import sys,os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # __file__获取执行文件相对路径，整行为取上一级的上一级目录
+sys.path.append(BASE_DIR)
+print(BASE_DIR)
+
 import torch
 import torch.nn as nn
-from transformers import BertModel
+from transformers import BertModel, BertTokenizer
 from model.decoder.TransDecoder import TransMask, TextEmbedding, PositionalEnconding, Generator
 
 
 class Transformer(nn.Module):
     def __init__(self, config, gpu_list, *args, **params):
-        super(Bert, self).__init__()
+        super(Transformer, self).__init__()
         self.mask = TransMask(config, gpu_list, *args, **params)
         self.te = TextEmbedding(config, gpu_list, *args, **params)
         self.pe = PositionalEnconding(config, gpu_list, *args, **params)
@@ -31,7 +36,7 @@ class Transformer(nn.Module):
             self.ge = nn.DataParallel(self.ge, device_ids=device)
             self.transformer = nn.DataParallel(self.transformer, device_ids=device)
 
-    def forward(self, data, config, gpu_list, acc_result, mode):
+    def forward(self, data, config, gpu_list, mode):
         x = data
 
         document_input_ids = x['document_input_ids']
@@ -40,10 +45,10 @@ class Transformer(nn.Module):
         _summary = summary_input_ids
         summary_str = []
         for batch in _summary:
-            summary_s = tokenizer.batch_decode(batch, skip_special_tokens=True)
+            summary_s = self.tokenizer.batch_decode(batch, skip_special_tokens=True)
             summary_s = ''.join(summary_s)
             summary_str.append(summary_s)
-        print(summary_str)
+        # print(summary_str)
 
         if mode != "test":
             # transformer-decoder
@@ -65,7 +70,7 @@ class Transformer(nn.Module):
 
             loss = self.criterion(summary_score, summary_input_ids)
 
-            print(loss)
+            # print(loss)
 
             pre_summary_temp = self.tokenizer.batch_decode(summary_out, skip_special_tokens=True)#predict summary
             pre_summary = ["".join(str.replace(" ", "")) for str in pre_summary_temp]

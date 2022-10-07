@@ -1,7 +1,11 @@
 from model.LCASE import LCASE
+from model.baseline.transformer import Transformer
+from model.baseline.bert import Bert
 
 model_list = {
-    "LCASE": LCASE
+    "LCASE": LCASE,
+    "Transformer":Transformer,
+    "Bert":Bert
 }
 
 

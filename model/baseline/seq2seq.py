@@ -5,36 +5,50 @@ print(BASE_DIR)
 
 import torch
 import torch.nn as nn
+import torch.nn.utils.rnn as rnn_utils
 from transformers import BertModel, BertTokenizer
 # from model.decoder.TransDecoder import TransMask, TextEmbedding, PositionalEnconding, Generator
 
 
-class Transformer(nn.Module):
+class Seq2seq(nn.Module):
     def __init__(self, config, gpu_list, *args, **params):
-        super(Transformer, self).__init__()
-        self.mask = TransMask(config, gpu_list, *args, **params)
-        self.te = TextEmbedding(config, gpu_list, *args, **params)
-        self.pe = PositionalEnconding(config, gpu_list, *args, **params)
-        self.ge = Generator(config, gpu_list, *args, **params)
+        super(Seq2seq, self).__init__()
+        self.vocab = config.getint("model", "vocab")
         self.d_model = config.getint("model", "hidden_size")
-        self.transformer = nn.Transformer(d_model=self.d_model)
+        self.embedding = nn.Embedding(self.vocab, self.d_model)
+        self.dropout = nn.Dropout(config.getfloat("model", "dropout"))
+        self.lstm = nn.LSTM(self.d_model, self.d_model, batch_first=True, bidirectional=True)
+        self.fc = nn.Linear(self.d_model * 2, self.d_model)
+
+        self.attn = nn.Linear((self.d_model * 2) + self.d_model, self.d_model)
+        self.v = nn.Linear(self.d_model, 1, bias=False)
         self.tokenizer = BertTokenizer.from_pretrained("hfl/chinese-roberta-wwm-ext")
+
+        self.d_lstm = nn.LSTM(self.d_model*2+self.d_model, self.d_model, batch_first=True)
+        self.d_fc = nn.Linear(self.d_model * 2+self.d_model+self.d_model, self.vocab)
 
         self.criterion = nn.CrossEntropyLoss()
 
     def init_multi_gpu(self, device, config, *args, **params):
         if config.getboolean("distributed", "use"):
-            self.mask = nn.parallel.DistributedDataParallel(self.mask, device_ids=device)
-            self.te = nn.parallel.DistributedDataParallel(self.te, device_ids=device)
-            self.pe = nn.parallel.DistributedDataParallel(self.pe, device_ids=device)
-            self.ge = nn.parallel.DistributedDataParallel(self.ge, device_ids=device)
-            self.transformer = nn.parallel.DistributedDataParallel(self.transformer, device_ids=device)
+            self.embedding = nn.parallel.DistributedDataParallel(self.embedding, device_ids=device)
+            self.dropout = nn.parallel.DistributedDataParallel(self.dropout, device_ids=device)
+            self.lstm = nn.parallel.DistributedDataParallel(self.lstm, device_ids=device)
+            self.fc = nn.parallel.DistributedDataParallel(self.fc, device_ids=device)
+            self.attn = nn.parallel.DistributedDataParallel(self.attn, device_ids=device)
+            self.v = nn.parallel.DistributedDataParallel(self.v, device_ids=device)
+            self.d_lstm = nn.parallel.DistributedDataParallel(self.d_lstm, device_ids=device)
+            self.d_fc = nn.parallel.DistributedDataParallel(self.d_fc, device_ids=device)
         else:
             self.mask = nn.DataParallel(self.mask, device_ids=device)
-            self.te = nn.DataParallel(self.te, device_ids=device)
-            self.pe = nn.DataParallel(self.pe, device_ids=device)
-            self.ge = nn.DataParallel(self.ge, device_ids=device)
-            self.transformer = nn.DataParallel(self.transformer, device_ids=device)
+            self.embedding = nn.DataParallel(self.embedding, device_ids=device)
+            self.dropout = nn.DataParallel(self.dropout, device_ids=device)
+            self.lstm = nn.DataParallel(self.lstm, device_ids=device)
+            self.fc = nn.DataParallel(self.fc, device_ids=device)
+            self.attn = nn.DataParallel(self.attn, device_ids=device)
+            self.v = nn.DataParallel(self.v, device_ids=device)
+            self.d_lstm = nn.DataParallel(self.d_lstm, device_ids=device)
+            self.d_fc = nn.DataParallel(self.d_fc, device_ids=device)
 
     def forward(self, data, config, gpu_list, mode):
         x = data
@@ -50,34 +64,66 @@ class Transformer(nn.Module):
             summary_str.append(summary_s)
         # print(summary_str)
 
-        if mode != "test":
-            # transformer-decoder
-            tgt_key_padding_mask, tgt_mask = self.mask(summary_input_ids)
-            src_key_padding_mask = torch.zeros(document_input_ids.size())
-            src_key_padding_mask[document_input_ids == 0] = -float('inf')
-            source_input = self.te(document_input_ids)
-            source_input = self.pe(source_input)
-            source_input = source_input.transpose(0,1)
+        # encoder
+        doc_len = []
+        for batch in document_input_ids:
+            len = 0
+            for i in batch:
+                if i != 0:
+                    len=len+1
+            doc_len.append(len)
+        doc_len = torch.LongTensor(doc_len)
 
-            target_out = self.te(summary_input_ids)
-            target_out = self.pe(target_out)
-            target_out = target_out.transpose(0,1)
-            out = self.transformer(src=source_input, tgt=target_out, tgt_mask=tgt_mask, src_key_padding_mask = src_key_padding_mask, tgt_key_padding_mask=tgt_key_padding_mask)
-            out = out.transpose(0,1)
-            summary_score = self.ge(out)#predict p[(p0,p1,...,p21127)*T]
-            summary_score = summary_score.transpose(1,2)
-            summary_out = summary_score.argmax(dim=1)#predict textcode
+        embedded = self.dropout(self.embedding(document_input_ids))
+        packed_embedded = rnn_utils.pack_padded_sequence(embedded, doc_len, batch_first=True, enforce_sorted=False)
+        self.lstm.flatten_parameters()
+        packed_outputs, hidden = self.lstm(packed_embedded) 
+        outputs, length = rnn_utils.pad_packed_sequence(packed_outputs, batch_first=True)#, , total_length=3000
+        hidden = torch.tanh(self.fc(torch.cat((hidden[0][:, -2, :], hidden[0][:, -1, :]), dim=1)))
 
-            loss = self.criterion(summary_score, summary_input_ids)
+        # attention
+        encoder_outputs = outputs
+        batch_size = encoder_outputs.shape[0]
+        doc_len = encoder_outputs.shape[1]
+        a_hidden = hidden.unsqueeze(1).repeat(1, doc_len, 1)
+        energy = torch.tanh(self.attn(torch.cat((a_hidden, encoder_outputs), dim=2)))
+        
+        attention = self.v(energy).squeeze(2)
+        mask = (document_input_ids != 0)
+        attention = attention.masked_fill(mask == 0, -1e10)
+        a = attention.softmax(dim=1)
 
-            # print(loss)
+        # decoder
+        sum_len = summary_input_ids.shape[1]
+        decoder_outputs = torch.zeros(sum_len, batch_size, self.vocab)###cuda
+        input = summary_input_ids[:,0]  #[101,101]
+        for t in range(1,sum_len):
+            input = input.unsqueeze(1)
+            sum_embedded = self.dropout(self.embedding(input))  #[batchsize, 1, 768]
+            weighted = torch.bmm(a.unsqueeze(1), encoder_outputs)   #[batchsize, 1, 768*2]
+            sum_input = torch.cat((sum_embedded, weighted), dim=2)  #[batchsize, 1, 768*3]
+            d_output, d_hidden = self.d_lstm(sum_input)
+            sum_embedded = sum_embedded.squeeze(1) 
+            d_output = d_output.squeeze(1)
+            weighted = weighted.squeeze(1)
+            prediction = self.d_fc(torch.cat((d_output, weighted, sum_embedded), dim = 1))
+            decoder_outputs[t] = prediction
+            pre_word = prediction.argmax(1)
+            if mode == 'train':
+                input = summary_input_ids[:,t]
+            else:
+                input = pre_word
 
-            pre_summary_temp = self.tokenizer.batch_decode(summary_out, skip_special_tokens=True)#predict summary
-            pre_summary = ["".join(str.replace(" ", "")) for str in pre_summary_temp]
+        decoder_outputs = decoder_outputs.permute(1,2,0)  #[batchsize, vocab, len]
+        loss = self.criterion(decoder_outputs, summary_input_ids)
+        # print(loss)
 
-            # acc_result = self.accuracy_function(pre_summary, summary_str, config)#
+        decoder_prediction = decoder_outputs.argmax(1)
+        summary_temp = self.tokenizer.batch_decode(decoder_prediction, skip_special_tokens=True)
+        pre_summary = ["".join(str.replace(" ", "")) for str in summary_temp]
+
+        if mode == 'train':
+            # print('train')
             return {"loss": loss, "summary": summary_str, "pre_summary": pre_summary}
 
-
-        # acc_result = self.accuracy_function(pre_summary, summary_str, config)#
         return {"summary": summary_str, "pre_summary": pre_summary}

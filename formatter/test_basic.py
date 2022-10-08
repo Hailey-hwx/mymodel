@@ -204,7 +204,6 @@ dropout = 0.1
 
 # seq2seq
 print(document_input_ids.shape)
-print(document_input_ids)
 print(summary_input_ids.shape)
 
 # encoder
@@ -220,7 +219,7 @@ print(doc_len)
 
 embedding = nn.Embedding(vocab, d_model)
 # self.rnn = nn.GRU(emb_dim, enc_hid_dim, bidirectional=True)
-lstm = nn.LSTM(768, 768, bidirectional=True)
+lstm = nn.LSTM(768, 768, batch_first=True, bidirectional=True)
 fc = nn.Linear(768 * 2, 768)
 dropout = nn.Dropout(dropout)
 
@@ -240,13 +239,13 @@ encoder_outputs = outputs
 batch_size = encoder_outputs.shape[0]
 doc_len = encoder_outputs.shape[1]
  
-hidden = hidden.unsqueeze(1).repeat(1, doc_len, 1)
-# print(hidden.shape)
+a_hidden = hidden.unsqueeze(1).repeat(1, doc_len, 1)
+# print(a_hidden.shape)
 # print(outputs.shape)
-# hidden = [batch size, doc len, dec hid dim]
+# a_hidden = [batch size, doc len, dec hid dim]
 # outputs = [batch size, doc len, enc hid dim * 2]
  
-energy = torch.tanh(attn(torch.cat((hidden, encoder_outputs), dim=2)))
+energy = torch.tanh(attn(torch.cat((a_hidden, encoder_outputs), dim=2)))
 # energy = [batch size, doc len, dec hid dim]
  
 attention = v(energy).squeeze(2)
@@ -254,15 +253,58 @@ attention = v(energy).squeeze(2)
 mask = (document_input_ids != 0)
 attention = attention.masked_fill(mask == 0, -1e10)
 a = attention.softmax(dim=1)
-print(a.shape)
+print(a.shape)  #[batch_size, doc len]
 
 # decoder
+d_lstm = nn.LSTM(768*2+768, 768, batch_first=True)
+d_fc = nn.Linear(768 * 2+768+768, vocab)
 sum_len = summary_input_ids.shape[1]
-decoder_outputs = torch.zeros(batch_size, sum_len, vocab)###
-input = summary_input_ids[:,0]
+decoder_outputs = torch.zeros(sum_len, batch_size, vocab)###
+input = summary_input_ids[:,0]  #[101,101]
 # print(input)
 for t in range(1,sum_len):
     # output, hidden, _ = self.decoder(input, hidden, encoder_outputs, mask)
+    input = input.unsqueeze(1)
+    sum_embedded = dropout(embedding(input))  #[batchsize, 1, 768]
+        # print(sum_embedded.shape)
+        # a = a.unsqueeze(1)
+    weighted = torch.bmm(a.unsqueeze(1), encoder_outputs)   #[batchsize, 1, 768*2]
+        # print(weighted.shape)
+    sum_input = torch.cat((sum_embedded, weighted), dim=2)  #[batchsize, 1, 768*3]
+        # print(sum_input.shape)
+    d_output, d_hidden = d_lstm(sum_input)
+        # print(d_output.shape)    #[batchsize, 1, 768]
+        # print(d_hidden[0].shape)  #[1, bachsize, 768]
+    sum_embedded = sum_embedded.squeeze(1)
+    d_output = d_output.squeeze(1)
+    weighted = weighted.squeeze(1)
+    prediction = d_fc(torch.cat((d_output, weighted, sum_embedded), dim = 1))
+    # print(prediction.shape)  #[batchsize, output_dim]
+    decoder_outputs[t] = prediction
+    pre_word = prediction.argmax(1)
+    # print(pre_word)
+    # if mode == 'train':
+    if 1:
+        input = summary_input_ids[:,t]
+    else:
+        input = pre_word
+# print(decoder_outputs)
+print(decoder_outputs.shape)
+
+decoder_outputs = decoder_outputs.permute(1,2,0)  #[batchsize, vocab, len]
+criterion = nn.CrossEntropyLoss()
+loss = criterion(decoder_outputs, summary_input_ids)
+print(loss)
+
+decoder_prediction = decoder_outputs.argmax(1)
+summary_temp = tokenizer.batch_decode(decoder_prediction, skip_special_tokens=True)
+summary = ["".join(str.replace(" ", "")) for str in summary_temp]
+print(summary)
+
+
+
+
+
 
 
 

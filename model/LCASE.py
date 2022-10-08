@@ -154,7 +154,7 @@ class MyModel(nn.Module):
         # print(part3_str)
 
         # part2
-        if mode != "test":
+        if mode == "train":
             part2_score, part2_out = self.get_summary2(source_input_ids, source_attention_mask, target_inputs)
         else:
             part2_score, part2_out = self.get_summary2_test(source_input_ids, source_attention_mask, target_inputs)
@@ -273,7 +273,7 @@ class LCASE(nn.Module):
             summary_s = ''.join(summary_s)
             summary_str.append(summary_s)
 
-        if mode != "test":
+        if mode == "train":
             print(part1_summary)
             print(part2_summary)
             print(part3_summary)

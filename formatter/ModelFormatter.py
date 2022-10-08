@@ -123,7 +123,7 @@ class ModelFormatter(BasicFormatter):
         summary_token = self.tokenizer(summary_all, max_length=self.max_lawformer_len, truncation=True, padding=True, return_tensors='pt')
         summary = summary_token['input_ids']
 
-        if mode != "test":
+        if mode == "train":
             summary3_all_list = summary_formatter.summary_process(summary3_all)
             summary3_all = torch.LongTensor(summary3_all_list)
 

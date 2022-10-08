@@ -102,9 +102,15 @@
 
 # python3 train.py --config config/LCASE.config --gpu 0,1
 
-def a(x):
-    if x == 1:
-        return 1
-    return 0
+# def a(x):
+#     if x == 1:
+#         return 1
+#     return 0
 
-print(a(0))
+# print(a(0))
+
+import torch
+
+
+a = torch.LongTensor([[101,134]])
+print(a[:,-1].unsqueeze(1))
